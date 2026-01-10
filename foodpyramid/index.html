@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pyramid Health Tracker (Real Nutrition)</title>
+    <title>Pyramid Health Tracker (Robust)</title>
     <style>
         :root {
             --bg-color: #f4f7f6;
@@ -41,7 +41,6 @@
             margin-top: 0;
         }
 
-        /* ALERT BOX */
         #global-alert-box {
             background: #fee2e2;
             border: 2px solid var(--danger);
@@ -50,7 +49,6 @@
             border-radius: 12px;
             margin-bottom: 25px;
             display: none;
-            animation: slideIn 0.3s ease;
         }
 
         .alert-title {
@@ -59,7 +57,6 @@
             margin-bottom: 5px;
         }
 
-        /* SEARCH & LIST */
         .search-container {
             position: relative;
             margin-bottom: 20px;
@@ -87,8 +84,9 @@
             border: 1px solid #ddd;
             z-index: 100;
             display: none;
-            max-height: 200px;
+            max-height: 300px;
             overflow-y: auto;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
         }
 
         .suggestion-item {
@@ -99,6 +97,13 @@
 
         .suggestion-item:hover {
             background: #f9f9f9;
+        }
+
+        .suggestion-loading {
+            padding: 12px;
+            color: #777;
+            font-style: italic;
+            background: #fafafa;
         }
 
         #meal-list {
@@ -122,6 +127,13 @@
         .food-name {
             font-weight: bold;
             font-size: 0.95rem;
+        }
+
+        .macro-preview {
+            font-size: 0.75rem;
+            color: #888;
+            display: block;
+            margin-top: 2px;
         }
 
         .row-input {
@@ -218,18 +230,6 @@
         .model-rfk .score-circle {
             background: var(--accent-rfk);
         }
-
-        @keyframes slideIn {
-            from {
-                opacity: 0;
-                transform: translateY(10px);
-            }
-
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
     </style>
 </head>
 
@@ -239,7 +239,7 @@
         <h1>🍽️ Meal Builder</h1>
         <h2>Search USDA Database</h2>
         <div class="search-container">
-            <input type="text" id="food-input" placeholder="Type food (e.g., Apple Croissant, Reeses)...">
+            <input type="text" id="food-input" placeholder="Type food (e.g., Apple, Steak, Reeses)...">
             <div id="suggestions"></div>
         </div>
         <ul id="meal-list"></ul>
@@ -251,9 +251,7 @@
             <div class="alert-title">⚠️ HEALTH WARNING</div>
             <ul class="alert-list" id="alert-content"></ul>
         </div>
-
         <h1>📊 The Verdict</h1>
-
         <div class="score-card model-92">
             <div class="card-header">
                 <h3>1992 Pyramid</h3>
@@ -261,7 +259,6 @@
             </div>
             <div class="rec-box" id="rec-92"></div>
         </div>
-
         <div class="score-card model-plate">
             <div class="card-header">
                 <h3>MyPlate (2011)</h3>
@@ -269,7 +266,6 @@
             </div>
             <div class="rec-box" id="rec-plate"></div>
         </div>
-
         <div class="score-card model-rfk">
             <div class="card-header">
                 <h3>RFK / Upside Down</h3>
@@ -277,7 +273,6 @@
             </div>
             <div class="rec-box" id="rec-rfk"></div>
         </div>
-
         <button class="restart-btn" onclick="resetApp()">Build New Meal</button>
     </div>
 
@@ -285,7 +280,6 @@
         let currentMeal = [];
         const CONVERSIONS = { 'g': 1, 'oz': 28.35, 'lb': 453.6, 'cup': 200, 'srv': 150 };
 
-        // --- BACKEND API ---
         const input = document.getElementById('food-input');
         const suggestionsBox = document.getElementById('suggestions');
         let debounceTimer;
@@ -293,31 +287,43 @@
         input.addEventListener('input', (e) => {
             clearTimeout(debounceTimer);
             const val = e.target.value.trim();
-            suggestionsBox.innerHTML = '';
             if (val.length < 3) { suggestionsBox.style.display = 'none'; return; }
+
+            // Show loading
+            suggestionsBox.innerHTML = '<div class="suggestion-loading">🔍 Searching USDA...</div>';
+            suggestionsBox.style.display = 'block';
+
             debounceTimer = setTimeout(() => fetchFromPythonBackend(val), 300);
         });
 
         async function fetchFromPythonBackend(query) {
             try {
                 const response = await fetch(`http://127.0.0.1:5000/api/search?q=${query}`);
+
+                if (!response.ok) { throw new Error(`Server Error: ${response.status}`); }
+
                 const products = await response.json();
                 suggestionsBox.innerHTML = '';
 
                 if (products && products.length > 0) {
-                    suggestionsBox.style.display = 'block';
                     products.forEach(product => {
                         const div = document.createElement('div');
                         div.className = 'suggestion-item';
-                        div.innerHTML = `${product.name} <small style='color:#888'>(${product.category})</small>`;
+                        // Safety Check: Use (val || 0) to ensure we never crash on null
+                        const p = (product.protein_g || 0).toFixed(0);
+                        const f = (product.fat_g || 0).toFixed(0);
+                        const s = (product.sugar_g || 0).toFixed(0);
+
+                        div.innerHTML = `<strong>${product.name}</strong><br><small style='color:#666'>${product.category} • P:${p}g F:${f}g S:${s}g</small>`;
                         div.onclick = () => addFoodFromBackend(product);
                         suggestionsBox.appendChild(div);
                     });
-                } else { suggestionsBox.style.display = 'none'; }
+                } else {
+                    suggestionsBox.innerHTML = '<div class="suggestion-item">No results found.</div>';
+                }
             } catch (error) {
-                console.error("Backend Error:", error);
-                suggestionsBox.innerHTML = "<div class='suggestion-item' style='color:red'>Backend Offline</div>";
-                suggestionsBox.style.display = 'block';
+                console.error(error);
+                suggestionsBox.innerHTML = `<div class='suggestion-item' style='color:red'>Connection Error: ${error.message}</div>`;
             }
         }
 
@@ -329,7 +335,6 @@
                 unit: 'srv',
                 cooked_in: product.cooked_in,
                 special: product.special,
-                // REAL MACROS from API (per 100g)
                 macros: {
                     p: product.protein_g || 0,
                     f: product.fat_g || 0,
@@ -340,7 +345,6 @@
             input.value = ''; suggestionsBox.style.display = 'none'; renderList();
         }
 
-        // --- LIST RENDERING ---
         const mealList = document.getElementById('meal-list');
         function removeFood(index) { currentMeal.splice(index, 1); renderList(); }
         function updateItem(index, field, value) { currentMeal[index][field] = value; }
@@ -350,12 +354,21 @@
             currentMeal.forEach((item, index) => {
                 const li = document.createElement('li');
                 li.className = 'meal-item';
+
                 let tags = `<span style="font-size:0.75rem; background:#eee; padding:2px 5px; border-radius:4px; margin-left:5px">${item.category}</span>`;
                 if (item.cooked_in === 'seed_oil') tags += `<span style="font-size:0.75rem; background:#fee2e2; color:red; padding:2px 5px; border-radius:4px; margin-left:5px">⚠️ Oil</span>`;
 
+                // Safe rounding
+                const s = (item.macros.s || 0).toFixed(0);
+                const f = (item.macros.f || 0).toFixed(0);
+                const macroInfo = `(Per 100g: ${s}g Sugar, ${f}g Fat)`;
+
                 li.innerHTML = `
-                    <div class="food-name">${item.name} ${tags}</div>
-                    <input type="number" class="row-input" value="${item.amount}" min="0.1" step="0.5" onchange="updateItem(${index}, 'amount', parseFloat(this.value))">
+                    <div class="food-info">
+                        <div class="food-name">${item.name} ${tags}</div>
+                        <span class="macro-preview">${macroInfo}</span>
+                    </div>
+                    <input type="number" class="row-input" value="${item.amount}" min="0.1" step="0.5" oninput="updateItem(${index}, 'amount', parseFloat(this.value))">
                     <select class="row-input" onchange="updateItem(${index}, 'unit', this.value)">
                         <option value="srv" ${item.unit === 'srv' ? 'selected' : ''}>srv</option>
                         <option value="g" ${item.unit === 'g' ? 'selected' : ''}>g</option>
@@ -369,14 +382,11 @@
             });
         }
 
-        // --- ANALYSIS ---
         function analyzeMeal() {
             if (currentMeal.length === 0) { alert("Add food first!"); return; }
 
             let totalGrams = 0;
             let weights = { grain: 0, veg: 0, fruit: 0, protein: 0, dairy: 0, fat: 0, sweet: 0, seed_oil: 0, rfk_bonus: 0 };
-
-            // Track Totals for Alerts
             let totals = { protein: 0, sugar: 0, fat: 0, calories: 0 };
 
             currentMeal.forEach(item => {
@@ -384,28 +394,22 @@
                 const grams = multiplier;
                 totalGrams += grams;
 
-                // Add Category Weights
                 if (weights[item.category] !== undefined) weights[item.category] += grams;
                 if (item.cooked_in === 'seed_oil') weights.seed_oil += grams * 0.2;
                 if (item.special === 'rfk_bonus') weights.rfk_bonus += grams;
 
-                // Add Real Nutritional Values
-                // The API gives values per 100g. So we calculate: (Value / 100) * GramsEaten
-                if (item.macros) {
-                    totals.protein += (item.macros.p / 100) * grams;
-                    totals.sugar += (item.macros.s / 100) * grams;
-                    totals.fat += (item.macros.f / 100) * grams;
-                    totals.calories += (item.macros.cal / 100) * grams;
-                }
+                // Calculate Macros per Serving Size
+                // API data is per 100g.
+                totals.protein += (item.macros.p / 100) * grams;
+                totals.sugar += (item.macros.s / 100) * grams;
+                totals.fat += (item.macros.f / 100) * grams;
+                totals.calories += (item.macros.cal / 100) * grams;
             });
 
             if (totalGrams === 0) totalGrams = 1;
 
-            // --- HEALTH ALERTS ---
             const alerts = [];
-
-            // 50 Croissants (approx 3000g) -> ~300g Sugar -> This WILL trigger
-            if (totals.sugar > 75) alerts.push(`🍬 <b>Sugar Alert:</b> ${totals.sugar.toFixed(0)}g detected (Daily limit is ~36g).`);
+            if (totals.sugar > 75) alerts.push(`🍬 <b>Sugar Alert:</b> ${totals.sugar.toFixed(0)}g detected.`);
             if (totals.fat > 100) alerts.push(`🧈 <b>High Fat:</b> ${totals.fat.toFixed(0)}g detected.`);
             if (totals.protein > 200) alerts.push(`🥩 <b>Excess Protein:</b> ${totals.protein.toFixed(0)}g detected.`);
             if (weights.seed_oil > 20) alerts.push(`🛢️ <b>Seed Oils:</b> High content detected.`);
@@ -418,20 +422,17 @@
                 alerts.forEach(msg => { const li = document.createElement("li"); li.innerHTML = msg; alertContent.appendChild(li); });
             } else { alertBox.style.display = "none"; }
 
-            // --- SCORING ---
             const p = {};
             for (let key in weights) p[key] = weights[key] / totalGrams;
 
             // 1992
-            let score92 = 80;
-            let advice92 = [];
+            let score92 = 80; let advice92 = [];
             if (p.grain > 0.3) { score92 += 20; advice92.push("Good grain base."); } else advice92.push("Eat more grains.");
             if (p.fat > 0.1 || totals.fat > 80) { score92 -= 30; advice92.push("Too much fat."); }
             setResult('92', score92, advice92);
 
             // MyPlate
-            let platePoints = 0;
-            let advicePlate = [];
+            let platePoints = 0; let advicePlate = [];
             const plantPct = p.veg + p.fruit;
             platePoints += (Math.min(plantPct, 0.5) / 0.5) * 50;
             if (plantPct < 0.4) advicePlate.push("Need more plants.");
@@ -439,12 +440,11 @@
             platePoints += (Math.min(protPct, 0.25) / 0.25) * 25;
             const grainPct = p.grain;
             platePoints += (Math.min(grainPct, 0.25) / 0.25) * 25;
-            if (totals.sugar > 40) platePoints -= 20; // Specific deduction for sugar macros
+            if (totals.sugar > 40) platePoints -= 20;
             setResult('plate', platePoints, advicePlate);
 
             // RFK
-            let scoreRFK = 90;
-            let adviceRFK = [];
+            let scoreRFK = 90; let adviceRFK = [];
             if (weights.seed_oil > 5) { scoreRFK -= 30; adviceRFK.push("Contains Seed Oils!"); }
             if (totals.sugar > 30) { scoreRFK -= 30; adviceRFK.push("High Sugar (Processed)."); }
             if (weights.rfk_bonus > 0) { scoreRFK += 10; adviceRFK.push("Good Tallow/Raw Milk."); }
