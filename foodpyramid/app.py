@@ -47,11 +47,8 @@ def search_food():
 
     payload = {
         "api_key": API_KEY,
-        "query": query,
-        # We search ALL databases.
+        "query": query.upper(), # <--- Forces "CELERY" (uppercase) automatically
         "dataType": ["Foundation", "SR Legacy", "Branded", "Survey (FNDDS)"], 
-        # FETCH 100 ITEMS (Maximum allowed page size)
-        # This ensures we dig deep enough to find 'Celery, raw' buried under 'Celery Soup'
         "pageSize": 100
     }
 
