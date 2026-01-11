@@ -42,6 +42,15 @@ def map_usda_category(usda_cat, name):
     if any(k in name for k in prot_keywords):
         return "protein"
     
+    # FRUITS
+    fruit_keywords = [
+        "strawberry", "strawberries", "apple", "banana", "blueberry", "raspberries", 
+        "blackberry", "grape", "melon", "watermelon", "citrus", "orange", 
+        "peach", "pear", "mango", "pineapple", "cherry", "fruit, berry, berries"
+    ]
+    if any(k in name for k in fruit_keywords):
+        return "fruit"
+    
     grain_keywords = [
         "bread", "toast", "bagel", "roll", "bun", "croissant", "pancake", "waffle",
         "pasta", "spaghetti", "macaroni", "noodle", "ramen", "rice", "oat", "grain",
@@ -49,15 +58,6 @@ def map_usda_category(usda_cat, name):
     ]
     if any(k in name for k in grain_keywords):
         return "grain"
-
-    # FRUITS
-    fruit_keywords = [
-        "strawberry", "strawberries", "apple", "banana", "blueberry", "raspberries", 
-        "blackberry", "grape", "melon", "watermelon", "citrus", "orange", 
-        "peach", "pear", "mango", "pineapple", "cherry", "fruit"
-    ]
-    if any(k in name for k in fruit_keywords):
-        return "fruit"
         
     # VEGETABLES
     veg_keywords = [
