@@ -4,8 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pyramid Tracker + History</title>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <title>Pyramid Tracker (Images)</title>
     <style>
         :root {
             --bg-color: #f4f7f6;
@@ -45,10 +44,6 @@
             padding: 25px;
             border-radius: 20px;
             box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
-        }
-
-        .full-width {
-            grid-column: 1 / -1;
         }
 
         h1 {
@@ -164,59 +159,77 @@
             background: #95a5a6;
         }
 
-        .clear-history-btn {
-            background: transparent;
-            color: #999;
-            border: 1px solid #ddd;
-            margin-top: 20px;
-            font-size: 0.8rem;
-        }
-
-        /* Results */
+        /* Results with Images */
         #results-area {
             display: none;
         }
 
-        .score-row {
+        .score-list {
             display: flex;
-            justify-content: space-between;
-            gap: 10px;
+            flex-direction: column;
+            gap: 15px;
             margin-bottom: 20px;
         }
 
-        .mini-card {
-            flex: 1;
-            text-align: center;
+        .score-card {
+            display: flex;
+            align-items: center;
             padding: 15px;
-            border-radius: 10px;
+            border-radius: 15px;
             border: 2px solid #eee;
+            background: #fff;
+            gap: 15px;
         }
 
-        .mini-score {
-            font-size: 1.5rem;
+        /* Image Styling */
+        .score-img {
+            width: 80px;
+            height: 80px;
+            object-fit: contain;
+            /* Keeps aspect ratio */
+            border-radius: 8px;
+            background-color: #f9f9f9;
+        }
+
+        .score-info {
+            flex: 1;
+        }
+
+        .score-title {
+            font-weight: bold;
+            font-size: 1rem;
+            color: #555;
+            margin-bottom: 5px;
+        }
+
+        .score-val {
+            font-size: 2rem;
             font-weight: bold;
         }
 
+        /* Colors */
         .b-92 {
             border-color: var(--accent-92);
+        }
+
+        .b-92 .score-val {
             color: #d4ac0d;
         }
 
         .b-plate {
             border-color: var(--accent-plate);
+        }
+
+        .b-plate .score-val {
             color: var(--accent-plate);
         }
 
         .b-rfk {
             border-color: var(--accent-rfk);
-            color: var(--accent-rfk);
         }
 
-        /* Graph Section */
-        #chart-container {
-            position: relative;
-            height: 300px;
-            width: 100%;
+        .b-rfk .score-val {
+            color: var(--accent-rfk);
         }
     </style>
 </head>
@@ -236,7 +249,7 @@
         </div>
 
         <div class="container" id="results-wrapper">
-            <h1 id="res-title">📊 Results</h1>
+            <h1 id="res-title">📊 Verdict</h1>
 
             <div id="global-alert-box">
                 <div class="alert-title">⚠️ ALERT</div>
@@ -244,10 +257,31 @@
             </div>
 
             <div id="results-area">
-                <div class="score-row">
-                    <div class="mini-card b-92">1992<br><span class="mini-score" id="s-92">0%</span></div>
-                    <div class="mini-card b-plate">MyPlate<br><span class="mini-score" id="s-plate">0%</span></div>
-                    <div class="mini-card b-rfk">RFK<br><span class="mini-score" id="s-rfk">0%</span></div>
+
+                <div class="score-list">
+                    <div class="score-card b-92">
+                        <img src="foodpyramidimages/oldfoodpyramid.png" alt="1992 Pyramid" class="score-img">
+                        <div class="score-info">
+                            <div class="score-title">1992 Pyramid</div>
+                            <div class="score-val" id="s-92">0%</div>
+                        </div>
+                    </div>
+
+                    <div class="score-card b-plate">
+                        <img src="foodpyramidimages/MyPlate.png" alt="MyPlate" class="score-img">
+                        <div class="score-info">
+                            <div class="score-title">MyPlate (2011)</div>
+                            <div class="score-val" id="s-plate">0%</div>
+                        </div>
+                    </div>
+
+                    <div class="score-card b-rfk">
+                        <img src="foodpyramidimages/newfoodpyramid.png" alt="RFK Pyramid" class="score-img">
+                        <div class="score-info">
+                            <div class="score-title">RFK / Upside Down</div>
+                            <div class="score-val" id="s-rfk">0%</div>
+                        </div>
+                    </div>
                 </div>
 
                 <div id="advice-box"
@@ -255,17 +289,8 @@
                     Analyze a meal to see details.
                 </div>
 
-                <button class="btn save-btn" onclick="saveToHistory()">💾 Save to History</button>
                 <button class="btn restart-btn" onclick="resetApp()">Start Over</button>
             </div>
-        </div>
-
-        <div class="container full-width">
-            <h1>📈 Your Health Trends</h1>
-            <div id="chart-container">
-                <canvas id="historyChart"></canvas>
-            </div>
-            <button class="btn clear-history-btn" onclick="clearHistory()">Clear History Data</button>
         </div>
 
     </div>
@@ -273,28 +298,9 @@
     <script>
         // --- STATE ---
         let currentMeal = [];
-        let lastCalculatedScores = null; // Stores scores to save later
         const CONVERSIONS = { 'g': 1, 'oz': 28.35, 'lb': 453.6, 'cup': 200, 'srv': 150 };
 
-        // --- CHART SETUP ---
-        const ctx = document.getElementById('historyChart').getContext('2d');
-        let historyChart = new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: [],
-                datasets: [
-                    { label: 'RFK Score', borderColor: '#9b59b6', data: [], tension: 0.3 },
-                    { label: 'MyPlate', borderColor: '#3498db', data: [], tension: 0.3 },
-                    { label: '1992 Pyramid', borderColor: '#f1c40f', data: [], tension: 0.3 }
-                ]
-            },
-            options: { responsive: true, maintainAspectRatio: false }
-        });
-
-        // Load history on startup
-        updateChartFromStorage();
-
-        // --- API & LIST LOGIC (Same as before) ---
+        // --- API & LIST LOGIC ---
         const input = document.getElementById('food-input');
         const suggestionsBox = document.getElementById('suggestions');
         let debounceTimer;
@@ -395,17 +401,11 @@
 
             // Clamp
             const clamp = n => Math.min(100, Math.max(0, Math.round(n)));
-            lastCalculatedScores = {
-                date: new Date().toLocaleDateString() + " " + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-                rfk: clamp(sRFK),
-                plate: clamp(sPlate),
-                n92: clamp(s92)
-            };
 
             // 3. Render UI
-            document.getElementById('s-92').innerText = lastCalculatedScores.n92 + "%";
-            document.getElementById('s-plate').innerText = lastCalculatedScores.plate + "%";
-            document.getElementById('s-rfk').innerText = lastCalculatedScores.rfk + "%";
+            document.getElementById('s-92').innerText = clamp(s92) + "%";
+            document.getElementById('s-plate').innerText = clamp(sPlate) + "%";
+            document.getElementById('s-rfk').innerText = clamp(sRFK) + "%";
             document.getElementById('advice-box').innerHTML = `<b>RFK Analysis:</b> ${rfkTips.length ? rfkTips.join(", ") : "Good meal."}`;
 
             // Alerts
@@ -422,44 +422,10 @@
             document.getElementById('results-area').style.display = 'block';
         }
 
-        // --- HISTORY LOGIC ---
-        function saveToHistory() {
-            if (!lastCalculatedScores) return;
-
-            // Get existing history from LocalStorage
-            let history = JSON.parse(localStorage.getItem('pyramidHistory') || '[]');
-            history.push(lastCalculatedScores);
-
-            // Save back
-            localStorage.setItem('pyramidHistory', JSON.stringify(history));
-
-            updateChartFromStorage();
-            alert("Meal saved to graph!");
-        }
-
-        function updateChartFromStorage() {
-            const history = JSON.parse(localStorage.getItem('pyramidHistory') || '[]');
-
-            // Update Chart Data
-            historyChart.data.labels = history.map(h => h.date);
-            historyChart.data.datasets[0].data = history.map(h => h.rfk);
-            historyChart.data.datasets[1].data = history.map(h => h.plate);
-            historyChart.data.datasets[2].data = history.map(h => h.n92);
-            historyChart.update();
-        }
-
-        function clearHistory() {
-            if (confirm("Delete all history?")) {
-                localStorage.removeItem('pyramidHistory');
-                updateChartFromStorage();
-            }
-        }
-
         function resetApp() {
             currentMeal = []; renderList();
             document.getElementById('results-area').style.display = 'none';
             document.getElementById('global-alert-box').style.display = 'none';
-            lastCalculatedScores = null;
         }
     </script>
 </body>
