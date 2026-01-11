@@ -316,7 +316,7 @@
 
         async function fetchFood(query) {
             try {
-                const res = await fetch(`http://127.0.0.1:5000/api/search?q=${query}`);
+                const res = await fetch(`/api/search?q=${query}`);
                 const data = await res.json();
                 suggestionsBox.innerHTML = '';
                 if (data && data.length > 0) {
