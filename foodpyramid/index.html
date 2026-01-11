@@ -262,7 +262,7 @@
                     </div>
 
                     <div class="score-card b-plate">
-                        <img src="foodpyramidimages/MyPlate.png" alt="MyPlate" class="score-img">
+                        <img src="foodpyramidimages/MyPlate.png" id="img-plate" alt="MyPlate" class="score-img">
                         <div class="score-info">
                             <div class="score-title">MyPlate (2011)</div>
                             <div class="score-val" id="s-plate">0%</div>
@@ -270,7 +270,8 @@
                     </div>
 
                     <div class="score-card b-rfk">
-                        <img src="foodpyramidimages/newfoodpyramid.png" alt="RFK Pyramid" class="score-img">
+                        <img src="foodpyramidimages/newfoodpyramid.png" id="img-rfk" alt="RFK Pyramid"
+                            class="score-img">
                         <div class="score-info">
                             <div class="score-title">RFK / Upside Down</div>
                             <div class="score-val" id="s-rfk">0%</div>
@@ -438,10 +439,25 @@
             // Clamp results 0-100
             const clamp = n => Math.min(100, Math.max(0, Math.round(n)));
 
-            // 3. Render UI
+            // 3. Render Scores
             document.getElementById('s-92').innerText = clamp(s92) + "%";
             document.getElementById('s-plate').innerText = clamp(sPlate) + "%";
             document.getElementById('s-rfk').innerText = clamp(sRFK) + "%";
+
+            // 4. TRIGGER REACTION IMAGES
+            const plateImg = document.getElementById('img-plate');
+            if (sPlate < 50) {
+                plateImg.src = "reactionimg/angrymichelle.png";
+            } else {
+                plateImg.src = "reactionimg/happymichelle.png";
+            }
+
+            const rfkImg = document.getElementById('img-rfk');
+            if (sRFK < 50) {
+                rfkImg.src = "reactionimg/angry RFK.png";
+            } else {
+                rfkImg.src = "reactionimg/happyRFK.png";
+            }
 
             let tipText = rfkTips.length ? rfkTips.join(", ") : "Good clean meal.";
             document.getElementById('advice-box').innerHTML = `<b>RFK Analysis:</b> ${tipText}`;
